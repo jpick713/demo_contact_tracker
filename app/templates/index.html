@@ -1,0 +1,16 @@
+{% extends "base.html"%}
+
+	{%block content%}
+		<div style="margin: 0 auto; text-align:center; padding-top:2em">
+		{% if user.is_authenticated%}
+		
+		<h1>Hello, {{user.username}}!</h1>
+			<a href = "{{url_for('main_bp.contact_tracker')}}" style="font-size:200%">Ready to search database?</a>
+			
+		{%else%}
+			<a href= "{{url_for('auth_bp.login')}}" style="font-size:200%">Please login!</a>
+			
+		{% endif %}
+		</div>
+	
+	{% endblock %}

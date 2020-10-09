@@ -1,0 +1,155 @@
+{% extends "base.html" %}
+
+{%block content%}
+<link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/1.10.21/css/jquery.dataTables.css">
+<link rel="stylesheet" href="{{url_for('static', filename='jquery.multiselect.css')}}">
+<link href="https://cdn.bokeh.org/bokeh/release/bokeh-2.0.2.min.css" rel="stylesheet" type="text/css">
+<link href="https://cdn.bokeh.org/bokeh/release/bokeh-widgets-2.0.2.min.css" rel="stylesheet" type="text/css">
+  
+<script type="text/javascript" charset="utf8" src="https://cdn.datatables.net/1.10.21/js/jquery.dataTables.js"></script>
+<script type="text/javascript" charset="utf8" src="{{url_for('static', filename='jquery.multiselect.js')}}"></script>
+<script src="https://cdn.bokeh.org/bokeh/release/bokeh-2.0.2.min.js" crossorigin="anonymous"></script>
+<script src="https://cdn.bokeh.org/bokeh/release/bokeh-widgets-2.0.2.min.js" crossorigin="anonymous"></script>
+
+<div class="container" style="width:98%; max-width:1700px; min-width:1500px; padding-bottom:1em">
+	<div class="bg-primary" style="margin-top:1em; padding-bottom:1em; margin-left:auto; margin-right:auto; text-align:center; min-width: 1500px; max-width:1700px; border-radius:5px; font-size:120%">
+		<h1 style="color:white">Make Reports for Events</h1>
+		<form id="event_form" method="Post">
+		<div class="row" style="padding-right:0.25em; padding-left:0.25em">
+			<div class="col-md-2" style="text-align:right; color:white">School(s):
+			</div>
+			<div class="col-md-2">
+				<select class="mult" name="school" id="school_list" style="width:100%; background-color:beige">
+					<option disabled selected>--Select School</option>
+				{%for school in schools%}
+					<option value="{{school.school_name}}">{{school.school_name}}</option>
+				{%endfor%}
+				</select>
+			</div>
+			<div class="col-md-2" style="text-align:right; color:white">Role Contacted:
+			</div>
+			<div class="col-md-2">
+				<select class="mult-right" name="role_contacted" id="role_list" style="width:100%; background-color:beige">
+					<option disabled selected>--Select Role</option>
+					<option value="Administrator">Administrator</option>
+					<option value="Advocate/Lawyer">Advocate/Lawyer</option>
+					<option value="AT Specialist">AT Specialist</option>
+					<option value="Behavior specialist/RBT">Behavior specialist/RBT</option>
+					<option value="Classroom Teacher">Classroom Teacher</option>
+					<option value="DHH">DHH</option>
+					<option value="Gifted Teacher">Gifted Teacher</option>
+					<option value="OT/PT">OT/PT</option>
+					<option value="Parent/Guardian">Parent/Guardian</option>
+					<option value="SLP">SLP</option>
+					<option value="VI Teacher">VI Teacher</option>
+					<option value="Other">Other</option>
+				
+				</select>
+			</div>
+			<div class="col-md-2" style="text-align:right; color:white">Event Type:
+			</div>
+			<div class="col-md-2">
+				<select class="mult-right" name="event_type" id="role_list" style="width:100%; background-color:beige">
+					<option disabled style="color:light-gray" selected>--Select Event</option>
+					<option value="conference">Conference</option>
+					<option value="email">E-mail</option>
+					<option value="meeting">Meeting</option>
+					<option value="phone call">Phone call</option>
+					<option value="training">Training</option>				
+				</select>
+			</div>
+		</div>
+		<div class="row" style="padding-top:0.75em; padding-right:0.25em; padding-left:0.25em">
+			<div class="col-md-2" style="text-align:right; color:white">Employee(s) Who Completed Event:
+			</div>
+			<div class="col-md-2">
+				<select class="mult-employee" name="employee" id="employee_select" style="width:100%; background-color:beige">
+					<option disabled selected>--Select Employee</option>
+				{%for employee in employees%}
+					<option value="{{employee.employee_id}}">{{employee.full_name}}</option>
+				{%endfor%}
+				</select>
+			</div>
+			<div class="col-md-2" style="text-align:right; color:white">Start:
+			</div>
+			<div class="col-md-2">
+				<input type="date" name="start_date" style="width:100%; background-color:beige"/>
+			</div>
+			<div class="col-md-2" style="text-align:right; color:white">End:
+			</div>
+			<div class="col-md-2">
+				<input type="date" name="end_date" style="width:100%; background-color:beige"/>
+			</div>
+		</div>
+		<div class="row" style="padding-top:1em;">
+			<div class="col-md-6" style="text-align:right">
+				<button class="btn btn-lg btn-success" id="report_submit">Run Report</button>
+			</div>
+			<div class="col-md-6" style="text-align:left">
+				<button type = "reset" id="reset_button" class="btn btn-lg btn-secondary">Clear Filters</button>&emsp;&emsp;
+				<button id="go_back" class="btn btn-lg btn-danger">Return to To-Do List</button>
+			</div>
+		</div>
+		</form>
+	</div>
+</div>
+
+<div style="width:99%; display:none">
+			<table id="reports_table" class="table-striped table-bordered table-hover">
+				<thead>
+					<th style="width:6%">Edit</th>
+					<th style="width:7.5%">Person Completed</th>
+					<th style="width:8.5%">Time Completed</th>
+					<th style="width:7%">Event Type</th>
+					<th style="width:10%">School</th>
+					<th style="width:7%">Student ID</th>
+					<th style="width:10%">Name Contacted</th>
+					<th style="width:8%">Role Contacted</th>
+					<th style="width:8%">Time Last Updated</th>
+					<th style="width8%">Who Last Updated</th>
+					<th style="width:20%">Summary</th>
+				</thead>
+				<tbody id="event_body_alt" class="body_event_alt">
+				</tbody>
+			</table>
+</div>
+
+<div class="container" style="width:95%; max-width:1250px; min-width:1080px">
+	<div class="columns" style="display:flex; padding-bottom:1em; padding-top:0.5em; justify-content:space-evenly">
+{%if script%}<div class="col" style="text-align:center">{{ script|safe }}{%endif%}
+{%if div%}{{ div|safe }}</div>{%endif%}
+<!--{%if script_1%}<div class="col">{{ script_1|safe }}{%endif%}
+{%if div%}{{ div_1|safe }}</div>{%endif%}-->
+
+	</div>
+</div>
+
+<script>
+
+$(document).ready( function () {
+$('#reports_table').DataTable({
+		"pageLength" : 50,
+		"order" : [[2,'desc']],
+		"columns": [{ "searchable": false, "orderable" : false },
+		{ "searchable": false, "orderable" : false },
+    { "searchable": false, "orderable" : true },
+    { "searchable": false, "orderable" : false },
+    { "searchable": false, "orderable" : false },
+	{ "searchable": false, "orderable" : false },
+    { "searchable": false, "orderable" : false },
+	{ "searchable": false, "orderable" : false },
+    { "searchable": false, "orderable" : false },
+	{ "searchable": false, "orderable" : false },
+	{ "searchable": true, "orderable" : false }
+    ]
+	});
+});
+
+$('#go_back').on("click", function(){
+	event.preventDefault();
+	window.location.href="{{url_for('main_bp.contact_tracker')}}"
+})
+
+</script>
+
+{% endblock %}

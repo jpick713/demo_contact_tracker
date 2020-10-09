@@ -1,0 +1,1330 @@
+{% extends "base.html" %}
+
+{%block content%}
+<link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/1.10.21/css/jquery.dataTables.css">
+<link rel="stylesheet" href="{{url_for('static', filename='jquery.multiselect.css')}}">
+  
+<script type="text/javascript" charset="utf8" src="https://cdn.datatables.net/1.10.21/js/jquery.dataTables.js"></script>
+<script type="text/javascript" charset="utf8" src="{{url_for('static', filename='jquery.multiselect.js')}}"></script>
+
+<style>
+	.to_do_header {padding-top:0.25em;
+				 display:flex;
+				 justify-content:flex-start;
+				 font-size: 125%
+				 }
+				 
+	.to_do_cols_1 {text-align:right;
+				 width:50%
+				 }
+				 
+	.to_do_cols_2 {text-align: left;
+				 margin-left:0.25em;
+				 width:15%
+				}
+
+	.to_do_cols_3 {text-align: right;
+					width:25%}	
+	th, td {text-align:center;
+		vertical-align:middle;
+	    font-size:110%}
+				 			 
+</style>
+
+<div style="padding-top:0.5em; padding-bottom: 0.5em">
+  <ul class="nav nav-tabs center-tabs" style="display:flex; justify-content:center">
+    <li class="nav-item" style="border: 2px solid; padding-left:2px; padding-right:2px; width:250px; text-align:center; font-size:105%"><a id="todo" class="nav-link active page-tabs" href="#"> <b>&nbsp;To Do List&nbsp;</b></a></li>
+    <li class="nav-item" style="border: 2px solid; padding-left:2px; padding-right:2px; width:250px; text-align:center; font-size:105%" ><a id="events" class = "nav-link page-tabs" href="#"> &nbsp;<b>Events&nbsp;</b></a></li>
+    <li class="nav-item" style="border: 2px solid; padding-left:2px; padding-right:2px; width:250px; text-align:center; font-size:105%" ><a id="requests" class = "nav-link page-tabs" href="#"> &nbsp;<b>Requests&nbsp;</b></a></li>
+  </ul>
+</div>
+
+<div class="container" id="to_do_tab" style="width:98%; max-width:1750px; min-width:1650px; border: 2px black solid; margin-top:0.25em; padding-bottom:1em">
+	<div class="to_do_header">
+		<div class="to_do_cols_1">
+			To do list for
+		</div>
+		<div id="employee_to_do_name" class="to_do_cols_2">
+			{{user.full_name.title()}}
+		</div>
+		<div class="to_do_cols_3">
+			<select id="employee_list" style="width:100%; background-color:beige; font-size:90%">
+				<option disabled selected>Choose which employee's to-do list to view</option>
+				{%for employee in employees%}
+				<option value="{{employee.employee_id}}">{{employee.full_name}}</option>
+				{%endfor%}
+			</select>
+		</div>
+			
+	</div>
+	
+	<div id="task_container" class="columns" style="display:flex; justify-content:flex-start; padding-top:2.5em; margin-top:1em">
+		<div style="width:0.5%">
+		</div>
+		<div id="current_employee" style="width:80%">
+			<table id="to_do_table" class="table-striped table-bordered table-hover">
+				<thead>
+					<th style="width:13%">Edit/Reassign Task</th>
+					<th style="width:13%">Assigned By</th>
+					<th style="width:13%">Time Assigned</th>
+					<th style="width:10%">Correspondence Type</th>
+					<th style="width:28%">Notes</th>
+					<th style="width:13%">Due Date</th>
+					<th style="width:10%">Done ?</th>
+					
+				</thead>
+				<tbody id= "current_body" class="table_body_add">
+					{%for task in tasks%}
+					<tr {%if task.task_completed%}class="completed_task" style="display:none" {%else%}{%if task.priority%}style="background-color:rgba(244,208,63,0.75)"{%endif%}{%endif%}>
+						<td class="col_edit_reassign">{%if task.task_completed%}{%else%}<button id="task_id_{{task.task_id}}" class="btn btn-md btn-info edit_reassign">Edit/Reassign</button>{%endif%}<p style="padding-top:0.6em"><button id="report_task_{{task.task_id}}" class="btn btn-md btn-primary report_view">See All Task Info</button></p></td>
+						<td class="col_assigned_by">{{employee_list[loop.index0]}}</td>
+						<td class="col_datetime_assigned" data-order="{{task.datetime_assigned}}">{{datetime_converter(task.datetime_assigned) | safe}}</td>
+						<td class="col_task">{{task.task}}</td>
+						<td class="col_task_description"><div style="overflow:auto; max-height:250px">{{task.task_description}}</div></td>
+						<td class="col_datetime_due" data-order={%if task.datetime_due%}{{task.datetime_due}}{%else%}"3000-00-00"{%endif%} {%if red_list[loop.index0]%}style="color:red"{%endif%}>{%if task.datetime_due%}{{date_converter(task.datetime_due) | safe}}{%else%}No assigned due date{%endif%}</td>
+						<td class="col_completed">{%if task.task_completed%}<img src="{{url_for('static', filename='images/checkmark.png')}}" style="height:10%">{%endif%}</td>
+					</tr>
+					{%endfor%}
+				</tbody>
+			</table>
+		</div>
+		<div id="task_spinner" style="display:none; width:99.5%; margin-left:0 auto; margin-right;0 auto; text-align:center">
+			<div class="spinner-border" style="width: 3rem; height: 3rem;" role="status">
+				<span class="sr-only">Loading...</span>
+			</div>
+		</div>
+		<div id="viewed_employee" style="width:80%; display:none">
+			<table id="to_do_table_alt" class="table-striped table-bordered table-hover">
+				<thead>
+					<th class="th_2" style="width:13%">Edit/Reassign Task</th>
+					<th class="th_2" style="width:13%">Assigned By</th>
+					<th class="th_2" style="width:13%">Time Assigned</th>
+					<th class="th_2" style="width:10%">Correspondence Type</th>
+					<th class="th_3" style="width:28%">Notes</th>
+					<th class="th_2" style="width:13%">Due Date</th>
+					<th class="th_4" style="width:10%">Done ?</th>
+				</thead>
+				<tbody id="alt_body" class="table_body_add">
+				</tbody>
+			</table>
+		</div>
+		<div class='task_buttons_side' style="width:19.5%; text-align:center; margin-top:3em">
+			<button class="btn btn-lg btn-primary" id="task_creator" style="width:95%">Create New Task</button><br><br>
+			<button class="btn btn-lg btn-info" id="hide_show_tasks" style="width:95%">Hide/Show Completed Tasks</button><br><br>
+			<span style="font-size:125%">Yellow background denotes urgent tasks.</span>
+		</div>
+	</div>
+</div>
+    
+<div class="container" id="event_tab" style="width:98%; max-width:1700px; min-width:1675px; border: 2px black solid; margin-top:0.25em; padding-bottom:1em; display:none">
+	<div class="bg-primary" style="margin-top:1em; padding-bottom:1em; margin-left:auto; margin-right:auto; text-align:center; min-width: 1650px; max-width:1700px; border-radius:5px; font-size:120%">
+		<h1 style="color:white">Search Events</h1>
+		<form id="event_form">
+		<div class="row" style="padding-right:0.25em; padding-left:0.25em">
+			<div class="col-md-1" style="text-align:right; color:white">School(s):
+			</div>
+			<div class="col-md-2">
+				<select class="mult" name="school" multiple id="school_list" style="width:100%; background-color:beige">
+				{%for school in schools%}
+					<option value="{{school.school_name}}">{{school.school_name}}</option>
+				{%endfor%}
+				</select>
+			</div>
+			<div class="col-md-3" style="text-align:right; color:white">Role Contacted:
+			</div>
+			<div class="col-md-3">
+				<select class="mult-right" name="role_contacted" multiple id="role_list" style="width:100%; background-color:beige">
+					<option value="Administrator">Administrator</option>
+					<option value="Advocate/Lawyer">Advocate/Lawyer</option>
+					<option value="AT Specialist">AT Specialist</option>
+					<option value="Behavior specialist/RBT">Behavior specialist/RBT</option>
+					<option value="Classroom Teacher">Classroom Teacher</option>
+					<option value="DHH">DHH</option>
+					<option value="Gifted Teacher">Gifted Teacher</option>
+					<option value="OT/PT">OT/PT</option>
+					<option value="Parent/Guardian">Parent/Guardian</option>
+					<option value="SLP">SLP</option>
+					<option value="VI Teacher">VI Teacher</option>
+					<option value="Other">Other</option>
+				
+				</select>
+			</div>
+			<div class="col-md-1" style="text-align:right; color:white">Student ID:
+			</div>
+			<div class="col-md-2">
+				<input type="text" name="student_id" style="width:100%" placeholder="Input Student ID"/>
+			</div>	
+		</div>
+		<div class="row" style="padding-top:0.75em; padding-right:0.25em; padding-left:0.25em">
+			<div class="col-md-1" style="text-align:right; color:white">Employee(s):
+			</div>
+			<div class="col-md-2">
+				<select class="mult-employee" name="employee" multiple id="employee_select" style="width:100%">
+				{%for employee in employees%}
+					<option value="{{employee.employee_id}}">{{employee.full_name}}</option>
+				{%endfor%}
+				</select>
+			</div>
+			<div class="col-md-1" style="text-align:right; color:white">Start:
+			</div>
+			<div class="col-md-2">
+				<input type="date" name="start_date" style="width:100%"/>
+			</div>
+			<div class="col-md-1" style="text-align:right; color:white">End:
+			</div>
+			<div class="col-md-2">
+				<input type="date" name="end_date" style="width:100%"/>
+			</div>
+			<div class="col-md-1" style="text-align:right; color:white">Name:
+			</div>
+			<div class="col-md-2">
+				<input type="text" name="name_contacted" style="width:100%" placeholder="Input Name Contacted"/>
+			</div>
+		</div>
+		<div class="row" style="padding-top:1em;">
+			<div class="col-md-6" style="text-align:right">
+				<button class="btn btn-lg btn-success" id="event_submit">Search for Events</button>
+			</div>
+			<div class="col-md-6" style="text-align:left">
+				<button type = "reset" id="reset_button" class="btn btn-lg btn-secondary">Clear Filters</button>
+			</div>
+		</div>
+		</form>
+	</div>
+	<div id="event_container" class="columns" style="display:flex; justify-content:flex-start; padding-top:2.5em; margin-top:1em">
+		<div style="width:0.5%">
+		</div>
+		<div id="current_event" style="width:87%">
+			<table id="events_table" class="table-striped table-bordered table-hover">
+				<thead>
+					<th style="width:7%">Edit Event</th>
+					<th style="width:9%">Time Completed</th>
+					<th style="width:7%">Event Type</th>
+					<th style="width:11%">School</th>
+					<th style="width:7.5%">Student ID</th>
+					<th style="width:10%">Name Contacted</th>
+					<th style="width:9%">Role Contacted</th>
+					<th style="width:8.5%">Time Last Updated</th>
+					<th style="width8%">Who Last Updated</th>
+					<th style="width:23%">Summary</th>
+					
+				</thead>
+				<tbody id= "event_body" class="body_event">
+					{%for event in events%}
+					<tr class="completed_event">
+						<td class="col_edit_event"><button id="event_id_{{event.event_id}}" class="btn btn-md btn-info edit_event">Edit</button></td>
+						<td class="col_event_completed" data-order="{{event.complete_timestamp}}">{{datetime_converter(event.complete_timestamp) | safe}}</td>
+						<td class="col_event_type">{{event.event_type}}</td>
+						<td class="col_school">{{event.school}}</td>
+						<td class="col_student_id">{%if event.student_id%}{{event.student_id}}{%else%}No ID provided{%endif%}</td>
+						<td class="col_name_contacted">{%if event.name_contacted%}{{event.name_contacted}}{%else%}No name provided{%endif%}</td>
+						<td class="col_role_contacted">{{event.role_contacted}}</td>
+						<td class="col_time_updated">{{datetime_converter(event.last_edited_timestamp) | safe}}</td>
+						<td class="col_person_updated">{{employee_event_list[loop.index0]}}</td>
+						<td class="col_summary"><div style="overflow:auto; max-height:250px">{{event.summary}}</div></td>
+					</tr>
+					{%endfor%}
+				</tbody>
+			</table>
+		</div>
+		<div id="event_task_spinner" style="display:none; width:99.5%; margin-left:0 auto; margin-right:0 auto; text-align:center">
+			<div class="spinner-border" style="width: 3rem; height: 3rem;" role="status">
+				<span class="sr-only">Loading...</span>
+			</div>
+		</div>
+		<div id="loaded_event" style="width:87%; display:none">
+			<table id="events_table_alt" class="table-striped table-bordered table-hover">
+				<thead>
+					<th style="width:6%">Edit</th>
+					<th style="width:7.5%">Person Completed</th>
+					<th style="width:8.5%">Time Completed</th>
+					<th style="width:7%">Event Type</th>
+					<th style="width:10%">School</th>
+					<th style="width:7%">Student ID</th>
+					<th style="width:10%">Name Contacted</th>
+					<th style="width:8%">Role Contacted</th>
+					<th style="width:8%">Time Last Updated</th>
+					<th style="width8%">Who Last Updated</th>
+					<th style="width:20%">Summary</th>
+				</thead>
+				<tbody id="event_body_alt" class="body_event_alt">
+				</tbody>
+			</table>
+		</div>
+		<div class='event_buttons_side' style="width:12.5%; text-align:center; margin-top:3em">
+			<button class="btn btn-lg btn-primary" id="event_creator" style="width:95%">Create New Event</button><br><br>
+			<span style="font-size:110%">The button above will create an event not tied to any task. To complete an event for an assigned task, go to the task on the to-do tab.</span>
+		</div>
+	</div>
+</div>	
+
+<div class="container" id="requests_tab" style="width:98%; max-width:1750px; min-width:1650px; border: 2px black solid; margin-top:0.25em; padding-bottom:1em">
+requests
+</div>
+
+<!--This is the form modal declaration-->
+
+<div class="modal" id="formModal" role="dialog">
+	<div class="modal-dialog modal-xl" >
+    		<div class="modal-content" style="height:780px">
+
+      <!-- Modal Header -->
+      <div class="modal-header">
+        <h4 class="modal-title"></h4>
+        <button type="button" class="close_modal" data-dismiss="modal">&times;</button>
+      </div>
+	
+	 <!-- Modal body -->
+     <div class="modal-body" >
+        <div id="task_spinner_modal" style="display:none; width:98%; margin-left:0 auto; margin-right;0 auto; text-align:center">
+			<div class="spinner-border" style="width: 3rem; height: 3rem;" role="status">
+				<span class="sr-only">Loading...</span>
+			</div>
+		</div>
+	<iframe id="form_modal" style="width:98%; height:600px; overflow:auto"></iframe>
+      </div>
+
+	 <!-- Modal footer -->
+    <div class="modal-footer">
+	<button type="button" class="btn btn-secondary button_obs" id="make_event">Make Event for Completed Task</button> &emsp;
+	<button type="button" class="btn btn-secondary button_obs" id="task_save">Save Task Changes</button> &emsp;
+	<button type="button" class="btn btn-secondary" id="save_event">Save Event</button> &emsp;
+        <button type="button" class="btn btn-danger close_modal">Close</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<input type = "hidden" id="viewed_user" value="{{user.employee_id}}" />
+<input type= "hidden" id="new_or_edit_form" />
+<input type= "hidden" id="task_id_chosen" />
+<input type="hidden" id="current_toggle" value="none"/>
+<input type="hidden" id="alt_toggle" value="none"/>
+
+<!-- Report Modal-->
+
+<div class="modal" id="reportModal" role="dialog">
+	<div class="modal-dialog modal-xl" >
+    		<div class="modal-content" style="height:450px">
+
+      <!-- Modal Header -->
+      <div class="modal-header">
+        <h4 class="modal-title">Task Report</h4>
+        <button type="button" class="close" data-dismiss="modal">&times;</button>
+      </div>
+	
+	 <!-- Modal body -->
+     <div class="modal-body" >
+        <div id="task_report"></div>
+		</div>
+
+	 <!-- Modal footer -->
+    <div class="modal-footer">
+        <button type="button" class="btn btn-danger" data-dismiss="modal">Close</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>	
+$('#employee_list').on("change", function(){
+	var employee_chosen= $(this).val();
+	$('#viewed_user').val(employee_chosen);
+	var employee_chosen_name='';
+	var test_id='';
+	{%for employee in employees%}
+		test_id='{{employee.employee_id}}';
+		if(test_id==employee_chosen){
+		employee_chosen_name='{{employee.full_name.title()}}';
+		}
+	{%endfor%}
+	var current_employee_id = '{{user.employee_id}}';
+	if(current_employee_id==employee_chosen){
+		$('#employee_to_do_name').text('{{user.full_name.title()}}');
+		$('#current_employee').css('display', 'inline');
+		$('#task_creator').css('display', 'inline');
+		$('#hide_show_tasks').css('display', 'inline');
+		$('#task_spinner').css('display', 'none');
+		$('#viewed_employee').css('display', 'none');
+	}
+	else{ 
+		$('#employee_to_do_name').text(employee_chosen_name);
+		$('#alt_toggle').val("none");
+		$('#current_employee').css('display', 'none');
+		$('#task_creator').css('display', 'none');
+		$('#hide_show_tasks').css('display', 'none');
+		$('#viewed_employee').css('display', 'none');
+		$('#task_spinner').css('display', 'inline');
+		var url="{{url_for('main_bp.user_fetch', employee_id='')}}" + employee_chosen;
+		var img_url="{{url_for('static', filename='images/checkmark.png')}}";
+		var print_string='<thead><th class="th_2" style="width:13%">Edit/Reassign Task</th><th class="th_2" style="width:13%">Assigned By</th><th class="th_2" style="width:13%">Time Assigned</th><th class="th_2" style="width:10%">Correspondence Type</th><th class="th_3" style="width:28%">Notes</th><th class="th_2" style="width:13%">Due Date</th><th class="th_4" style="width:10%">Done ?</th></thead><tbody id="alt_body" class="table_body_add">';
+		$.ajax({url: url , method : 'GET'}).done(
+				function(data){
+					if (data.error){alert(data.error);
+									$('#employee_to_do_name').text('{{user.full_name.title()}}');
+									$('#current_employee').css('display', 'inline');
+									$('#task_creator').css('display', 'inline');
+									$('#hide_show_tasks').css('display', 'inline');
+									$('#task_spinner').css('display', 'none');
+									}
+								else{
+									$.each(data.test, function(index, value){
+										if(value.task_completed){
+											print_string+='<tr class="completed_task_alt" style="display:none">';}
+									else{if(value.priority){print_string+='<tr style="background-color:rgba(244,208,63,0.75)">';}
+										else{print_string+='<tr>';}}
+											{%if user.access_level >1%}
+											if(!value.task_completed){
+											print_string+='<td class="col_edit_reassign"><button id="task_id_' + value.task_id + '" class="btn btn-md btn-info edit_reassign">Edit/Reassign</button><p style="padding-top:0.6em"><button id="report_task_' + value.task_id + '" class="btn btn-md btn-primary report_view_added">See All Task Info</button></p></td>';}
+											else{print_string+='<td class="col_edit_reassign"><p style="padding-top:0.6em"><button id="report_task_' + value.task_id + '" class="btn btn-md btn-primary report_view_added">See All Task Info</button></p></td>';}
+											{%else%}
+										print_string+='<td class="col_edit_reassign"><p style="padding-top:0.6em"><button id="report_task_' + value.task_id + '" class="btn btn-md btn-primary report_view_added">See All Task Info</button></p></td>';
+											{%endif%}
+										print_string+='<td class="col_assigned_by">' + value.full_name_person_who_assigned + '</td>';
+										print_string+='<td class="col_datetime_assigned" data-order="' + value.datetime_assigned + '">' + date_convert(value.datetime_assigned.split('T')[0]) + '<br>' + time_convert(value.datetime_assigned.split('T')[1]) + '</td>';
+										print_string+='<td class="col_task">' + value.task + '</td>';
+										print_string+='<td class="col_task_description"><div style="overflow:auto; max-height:250px">' + value.task_description + '</div></td>';
+										if (value.datetime_due){
+											if(value.red){print_string+='<td class="col_datetime_due" style="color:red" data-order="' + value.datetime_due +'">' + date_convert(value.datetime_due) + '</td>';}
+										else{print_string+='<td class="col_datetime_due" data-order="' + value.datetime_due +'">'+ date_convert(value.datetime_due) + '</td>';}}
+										else{print_string+='<td class="col_datetime_due" data-order="3000-00-00">No assigned due date</td>';}
+										if(value.task_completed){
+											print_string+='<td class="col_completed"><img src=' + img_url + ' style="height:10%"></td></tr>';}
+										else{print_string+='<td class="col_completed"></td></tr>';}
+									})
+									print_string+='</tbody>';
+									$('#to_do_table_alt').empty();
+									$('#to_do_table_alt').html(print_string);
+									$('#to_do_table_alt').DataTable({
+										"destroy" : true,
+										"order" : [[2,'asc']],
+										"columns": [{ "searchable": false, "orderable" : false },
+									{ "searchable": false, "orderable" : false },
+									{ "searchable": false, "orderable" : true },
+									{ "searchable": false, "orderable" : false },
+									{ "searchable": true, "orderable" : false },
+									{ "searchable": false, "orderable" : true },
+									{ "searchable": false, "orderable" : false }
+									]
+									});
+									/*$('#alt_body').empty();
+									$('#alt_body').html(print_string);*/
+									$('#to_do_table_alt_filter').prepend('Notes ');
+									$('#task_creator').css('display', 'inline');
+									$('#hide_show_tasks').css('display', 'inline');
+									$('#task_spinner').css('display', 'none');
+									$('#viewed_employee').css('display', 'inline');
+									$('.th_4').css('width', '80px');
+									}							
+				}
+		)
+	}
+});
+
+$('.edit_reassign').on("click", function(){
+	event.preventDefault();
+	var button_id=$(this).attr('id');
+	$('#task_id_chosen').val(button_id);
+	var url="{{url_for('main_bp.task_editor', task_id='')}}" + button_id;
+		$('.button_obs').css("display", "inline");
+		$('#save_event').css("display", "none");
+		$('#new_or_edit_form').val('Edit');
+		$('#form_modal').attr('src', url);
+		$('.modal-title').text('Task Form');
+		$('#formModal').modal({
+				backdrop : 'static',
+				keyboard : false});
+})
+
+$('.table_body_add').on("click", '.edit_reassign', function(){
+	event.preventDefault();
+	var button_id=$(this).attr('id');
+	$('#task_id_chosen').val(button_id);
+	var url="{{url_for('main_bp.task_editor', task_id='')}}" + button_id;
+		$('.button_obs').css("display", "inline");
+		$('#save_event').css("display", "none");
+		$('#new_or_edit_form').val('Edit');
+		$('#form_modal').attr('src', url);
+		$('.modal-title').text('Task Form');
+		$('#formModal').modal({
+				backdrop : 'static',
+				keyboard : false});
+})
+
+$('#to_do_table, #to_do_table_alt').on("click", '.edit_reassign', function(){
+	event.preventDefault();
+	var button_id=$(this).attr('id');
+	$('#task_id_chosen').val(button_id);
+	var url="{{url_for('main_bp.task_editor', task_id='')}}" + button_id;
+		$('.button_obs').css("display", "inline");
+		$('#save_event').css("display", "none");
+		$('#new_or_edit_form').val('Edit');
+		$('#form_modal').attr('src', url);
+		$('.modal-title').text('Task Form');
+		$('#formModal').modal({
+				backdrop : 'static',
+				keyboard : false});
+})
+
+
+function time_convert(time){
+		var hour=Number(time.trim().split(':')[0]);
+		var minutes=''+time.trim().split(':')[1];
+		var seconds=''+time.trim().split(':')[2];
+		var AM_PM='';
+		if(hour==0){hour+=12; AM_PM='AM'}
+		else if(hour<12){AM_PM='AM'}
+		else if (hour==12){AM_PM='PM'}
+		else{hour-=12; AM_PM='PM'}
+		return ""+hour + ":" + minutes + ":" + seconds + " " + AM_PM
+	
+}
+
+function date_convert(date){
+	return "" + date.trim().split('-')[1] + "-" + date.trim().split('-')[2] + "-" + date.trim().split('-')[0]
+}
+
+
+
+$('.page-tabs').on('click',function(event){
+          event.preventDefault();
+          var x = $('.nav-link');
+          x.removeClass('active');
+          $(this).addClass('active');
+          if ($('#todo').hasClass('active')){
+          $('#to_do_tab').show();
+			}
+		  else{
+          $('#to_do_tab').hide()
+            }
+		  if ($('#events').hasClass('active')){
+			$('#event_tab').show();
+		  }
+		  else{
+			$('#event_tab').hide()
+		  }
+		  if ($('#requests').hasClass('active')){
+			$('#requests_tab').show();
+		  }
+		  else{
+			$('#requests_tab').hide()
+		  }
+		  });
+	  
+$(document).ready( function () {
+    $('#to_do_table').DataTable({
+		"pageLength" : 50,
+		"order" : [[2,'asc']],
+		"columns": [{ "searchable": false, "orderable" : false },
+    { "searchable": false, "orderable" : false },
+    { "searchable": false, "orderable" : true },
+    { "searchable": false, "orderable" : false },
+    { "searchable": true, "orderable" : false },
+    { "searchable": false, "orderable" : true },
+	{ "searchable": false, "orderable" : false }
+    ]
+	});
+	
+$('#to_do_table_alt').DataTable({
+	"pageLength" : 50,
+	"order" : [[2,'asc']],
+		"columns": [{ "searchable": false, "orderable" : false },
+    { "searchable": false, "orderable" : false },
+    { "searchable": false, "orderable" : true },
+    { "searchable": false, "orderable" : false },
+    { "searchable": true, "orderable" : false },
+    { "searchable": false, "orderable" : true },
+	{ "searchable": false, "orderable" : false }
+    ]
+	});
+	
+$('#events_table').DataTable({
+		"pageLength" : 50,
+		"order" : [[1,'desc']],
+		"columns": [{ "searchable": false, "orderable" : false },
+    { "searchable": false, "orderable" : true },
+    { "searchable": false, "orderable" : false },
+    { "searchable": false, "orderable" : false },
+	{ "searchable": false, "orderable" : false },
+    { "searchable": false, "orderable" : false },
+	{ "searchable": false, "orderable" : false },
+    { "searchable": false, "orderable" : false },
+	{ "searchable": false, "orderable" : false },
+	{ "searchable": true, "orderable" : false }
+    ]
+	});
+
+$('#events_table_alt').DataTable({
+		"pageLength" : 50,
+		"order" : [[2,'desc']],
+		"columns": [{ "searchable": false, "orderable" : false },
+		{ "searchable": false, "orderable" : false },
+    { "searchable": false, "orderable" : true },
+    { "searchable": false, "orderable" : false },
+    { "searchable": false, "orderable" : false },
+	{ "searchable": false, "orderable" : false },
+    { "searchable": false, "orderable" : false },
+	{ "searchable": false, "orderable" : false },
+    { "searchable": false, "orderable" : false },
+	{ "searchable": false, "orderable" : false },
+	{ "searchable": true, "orderable" : false }
+    ]
+	});
+});
+
+	
+
+$(document).ready( function () {
+	$('#to_do_table_filter, #to_do_table_alt_filter').prepend('Notes ');
+	
+	$('#events_table_filter, #events_table_alt_filter').prepend('Summary ');
+	});
+	
+$('#hide_show_tasks').on("click", function(){
+	event.preventDefault();
+	if ($('#current_employee').css("display") != "none"){
+	$('.completed_task').toggle();
+	if($('#current_toggle').val()=="none"){
+		$('#current_toggle').val("inline");}
+	else{$('#current_toggle').val("none");}
+	}
+	else{
+	$('.completed_task_alt').toggle();
+	if($('#alt_toggle').val()=="none"){
+		$('#alt_toggle').val("inline");}
+	else{$('#alt_toggle').val("none");}
+	}
+});
+
+$('#task_creator').on("click", function(){
+	event.preventDefault();
+	var url="{{url_for('main_bp.task_maker')}}";
+				$('#task_save').css("display", "inline");
+				$('#make_event').css("display", "none");
+				$('#save_event').css("display", "none");
+				$('#new_or_edit_form').val('New');
+				$('#form_modal').attr('src', url);
+				$('.modal-title').text('Task Form');
+				$('#formModal').modal({
+						backdrop : 'static',
+						keyboard : false});
+});
+
+$('.close_modal').on('click', function(){
+	var iframe=document.getElementById("form_modal");
+	if(iframe.contentWindow.document.getElementById("change_tracker").value==1){
+		var x= confirm('You have unsaved changes in the observation. If you close this form, then the changes will be lost. You sure you want to proceed?');
+		if(x){$('#formModal').modal('hide');}
+		else{return false;}
+	}
+	else{$('#formModal').modal('hide');}
+})
+
+$('#task_save').on('click', function(){
+	var iframe=document.getElementById("form_modal");
+	var form= iframe.contentWindow.document.getElementsByTagName("form")[0];
+	var data = new FormData(form);
+	var print_string='';
+	if($('#new_or_edit_form').val()=='New'){var url="{{url_for('main_bp.task_maker')}}";}
+	else{var chosen_id=$('#task_id_chosen').val();
+		var url="{{url_for('main_bp.task_editor', task_id='')}}" + chosen_id;}
+	$.ajax({url : url , method: 'POST', data: data, processData: false, contentType: false, dataType: "json"}).done(
+		function(data){
+				if(data.error){alert(data.error + data.task_description_error[0]);
+						var task_description_error = iframe.contentWindow.document.getElementById('task_description_error');
+						task_description_error.innerText= "*" + data.task_description_error[0];
+						task_description_error.style.display="inline";
+							}
+				else{
+					if($('#new_or_edit_form').val()=='New' && "{{current_user.employee_id}}"==data.person_assigned){
+						print_string+='<thead><th class="th_2" style="width:13%">Edit/Reassign Task</th><th class="th_2" style="width:13%">Assigned By</th><th class="th_2" style="width:13%">Time Assigned</th><th class="th_2" style="width:10%">Correspondence Type</th><th class="th_3" style="width:28%">Notes</th><th class="th_2" style="width:13%">Due Date</th><th class="th_4" style="width:10%">Done ?</th></thead><tbody id="current_body" class="table_body_add">';
+						print_string+=$('#current_body').html();
+						print_string+=task_row_creator(data.task_id, data.full_name_for_table, data.datetime_assigned, data.task, data.task_description, data.datetime_due, data.task_completed, '', true, data.red, data.priority);
+						print_string+='</tbody>';
+						$('#to_do_table').empty();
+						$('#to_do_table').html(print_string);
+						$('#to_do_table').DataTable({
+										"destroy" : true,
+										"pageLength" : 50,
+										"order" : [[2,'asc']],
+										"columns": [{ "searchable": false, "orderable" : false },
+									{ "searchable": false, "orderable" : false },
+									{ "searchable": false, "orderable" : true },
+									{ "searchable": false, "orderable" : false },
+									{ "searchable": true, "orderable" : false },
+									{ "searchable": false, "orderable" : true },
+									{ "searchable": false, "orderable" : false }
+									]
+									});
+						$('#to_do_table_filter').prepend('Notes ');
+						/*$('#current_body').append(task_row_creator(data.task_id, data.full_name_for_table, data.datetime_assigned, data.task, data.task_description, data.datetime_due, data.task_completed, '', true));*/
+					}
+					else if ($('#new_or_edit_form').val()=='New' && $('#viewed_user').val()==data.person_assigned){
+						print_string+='<thead><th class="th_2" style="width:13%">Edit/Reassign Task</th><th class="th_2" style="width:13%">Assigned By</th><th class="th_2" style="width:13%">Time Assigned</th><th class="th_2" style="width:10%">Correspondence Type</th><th class="th_3" style="width:28%">Notes</th><th class="th_2" style="width:13%">Due Date</th><th class="th_4" style="width:10%">Done ?</th></thead><tbody id="alt_body" class="table_body_add">';
+						print_string+=$('#alt_body').html();
+						print_string+=task_row_creator(data.task_id, data.full_name_for_table, data.datetime_assigned, data.task, data.task_description, data.datetime_due, data.task_completed, '', {%if user.access_level>1%}true{%else%}false{%endif%}, data.red, data.priority);
+						print_string+='</tbody>';
+						$('#to_do_table_alt').empty();
+						$('#to_do_table_alt').html(print_string);
+						$('#to_do_table_alt').DataTable({
+										"destroy" : true,
+										"pageLength" : 50,
+										"order" : [[2,'asc']],
+										"columns": [{ "searchable": false, "orderable" : false },
+									{ "searchable": false, "orderable" : false },
+									{ "searchable": false, "orderable" : true },
+									{ "searchable": false, "orderable" : false },
+									{ "searchable": true, "orderable" : false },
+									{ "searchable": false, "orderable" : true },
+									{ "searchable": false, "orderable" : false }
+									]
+									});
+						$('#to_do_table_alt_filter').prepend('Notes ');
+						/*$('#alt_body').append(task_row_creator(data.task_id, data.full_name_for_table, data.datetime_assigned, data.task, data.task_description, data.datetime_due, data.task_completed, '', {%if user.access_level>1%}true{%else%}false{%endif%}));*/
+					}
+					else if ($('#new_or_edit_form').val()=='Edit' && "{{current_user.employee_id}}"==data.person_assigned && "{{current_user.employee_id}}"==data.person_assigned_previous){
+						var task_id_selected=$('#task_id_chosen').val();
+						var row_to_edit=$('#'+ task_id_selected).parent().parent('tr');
+						var time_due=data.datetime_due;
+						row_to_edit.children('.col_task').html(data.task);
+						row_to_edit.children('.col_task_description').html('<div style="overflow:auto; max-height:250px">' + data.task_description + '</div>');
+						if(data.datetime_due){row_to_edit.children('.col_datetime_due').html(month_convert(time_due.split(' ')[2]) + '-' + time_due.split(' ')[1] + '-' + time_due.split(' ')[3]);
+												
+										if(data.red){row_to_edit.children('.col_datetime_due').css("color", "red");	
+													}
+										else{row_to_edit.children('.col_datetime_due').css("color", "black");}
+												}
+						if(data.priority){row_to_edit.css("background-color", "rgba(244,208,63,0.75)");}
+						else{row_to_edit.css("background-color", "white");}
+					}
+					else if ($('#new_or_edit_form').val()=='Edit' && "{{current_user.employee_id}}"==data.person_assigned){
+						if ($('#viewed_user').val()==data.person_assigned_previous){
+						var task_id_selected=$('#task_id_chosen').val();
+						$('#'+ task_id_selected).parent().parent('tr').remove();
+						var string_to_add=$('#to_do_table_alt').html();
+						$('#to_do_table_alt').empty();
+						$('#to_do_table_alt').html(string_to_add);
+						$('#to_do_table_alt').DataTable({
+										"destroy" : true,
+										"pageLength" : 50,
+										"order" : [[2,'asc']],
+										"columns": [{ "searchable": false, "orderable" : false },
+									{ "searchable": false, "orderable" : false },
+									{ "searchable": false, "orderable" : true },
+									{ "searchable": false, "orderable" : false },
+									{ "searchable": true, "orderable" : false },
+									{ "searchable": false, "orderable" : true },
+									{ "searchable": false, "orderable" : false }
+									]
+									});
+						$('#to_do_table_alt_filter').prepend('Notes ');						
+						print_string+='<thead><th class="th_2" style="width:13%">Edit/Reassign Task</th><th class="th_2" style="width:13%">Assigned By</th><th class="th_2" style="width:13%">Time Assigned</th><th class="th_2" style="width:10%">Correspondence Type</th><th class="th_3" style="width:28%">Notes</th><th class="th_2" style="width:13%">Due Date</th><th class="th_4" style="width:10%">Done ?</th></thead><tbody id="current_body" class="table_body_add">';
+						print_string+=$('#current_body').html();
+						print_string+=task_row_creator(data.task_id, data.full_name_for_table, data.datetime_assigned, data.task, data.task_description, data.datetime_due, data.task_completed, '', true, data.red, data.priority);
+						print_string+='</tbody>';
+						$('#to_do_table').empty();
+						$('#to_do_table').html(print_string);
+						$('#to_do_table').DataTable({
+										"destroy" : true,
+										"pageLength" : 50,
+										"order" : [[2,'asc']],
+										"columns": [{ "searchable": false, "orderable" : false },
+									{ "searchable": false, "orderable" : false },
+									{ "searchable": false, "orderable" : true },
+									{ "searchable": false, "orderable" : false },
+									{ "searchable": true, "orderable" : false },
+									{ "searchable": false, "orderable" : true },
+									{ "searchable": false, "orderable" : false }
+									]
+									});
+						$('#to_do_table_filter').prepend('Notes '); 
+						/*$('#current_body').append(task_row_creator(data.task_id, data.full_name_for_table, data.datetime_assigned, data.task, data.task_description, data.datetime_due, data.task_completed, '', true));*/
+						}
+						else{print_string+='<thead><th class="th_2" style="width:13%">Edit/Reassign Task</th><th class="th_2" style="width:13%">Assigned By</th><th class="th_2" style="width:13%">Time Assigned</th><th class="th_2" style="width:10%">Correspondence Type</th><th class="th_3" style="width:28%">Notes</th><th class="th_2" style="width:13%">Due Date</th><th class="th_4" style="width:10%">Done ?</th></thead><tbody id="current_body" class="table_body_add">';
+							print_string+=$('#current_body').html();
+							print_string+=task_row_creator(data.task_id, data.full_name_for_table, data.datetime_assigned, data.task, data.task_description, data.datetime_due, data.task_completed, '', true, data.red, data.priority);
+							print_string+='</tbody>';
+							$('#to_do_table').empty();
+							$('#to_do_table').html(print_string);
+							$('#to_do_table').DataTable({
+											"destroy" : true,
+											"pageLength" : 50,
+											"order" : [[2,'asc']],
+											"columns": [{ "searchable": false, "orderable" : false },
+										{ "searchable": false, "orderable" : false },
+										{ "searchable": false, "orderable" : true },
+										{ "searchable": false, "orderable" : false },
+										{ "searchable": true, "orderable" : false },
+										{ "searchable": false, "orderable" : true },
+										{ "searchable": false, "orderable" : false }
+										]
+										});
+							$('#to_do_table_filter').prepend('Notes ');
+							/*$('#current_body').append(task_row_creator(data.task_id, data.full_name_for_table, data.datetime_assigned, data.task, data.task_description, data.datetime_due, data.task_completed, '', true));*/}
+					}
+					else if ($('#new_or_edit_form').val()=='Edit' && $('#viewed_user').val()==data.person_assigned){
+							if ("{{current_user.employee_id}}"==data.person_assigned_previous){
+									var task_id_selected=$('#task_id_chosen').val();
+									$('#'+ task_id_selected).parent().parent('tr').remove();
+									var string_to_add=$('#to_do_table').html();
+									$('#to_do_table').empty();
+									$('#to_do_table').html(string_to_add);
+									$('#to_do_table').DataTable({
+													"destroy" : true,
+													"pageLength" : 50,
+													"order" : [[2,'asc']],
+													"columns": [{ "searchable": false, "orderable" : false },
+												{ "searchable": false, "orderable" : false },
+												{ "searchable": false, "orderable" : true },
+												{ "searchable": false, "orderable" : false },
+												{ "searchable": true, "orderable" : false },
+												{ "searchable": false, "orderable" : true },
+												{ "searchable": false, "orderable" : false }
+												]
+												});
+									$('#to_do_table_filter').prepend('Notes ');
+									print_string+='<thead><th class="th_2" style="width:13%">Edit/Reassign Task</th><th class="th_2" style="width:13%">Assigned By</th><th class="th_2" style="width:13%">Time Assigned</th><th class="th_2" style="width:10%">Correspondence Type</th><th class="th_3" style="width:28%">Notes</th><th class="th_2" style="width:13%">Due Date</th><th class="th_4" style="width:10%">Done ?</th></thead><tbody id="alt_body" class="table_body_add">';
+									print_string+=$('#alt_body').html();
+									print_string+=task_row_creator(data.task_id, data.full_name_for_table, data.datetime_assigned, data.task, data.task_description, data.datetime_due, data.task_completed, '', {%if user.access_level>1%}true{%else%}false{%endif%}, data.red, data.priority);
+									print_string+='</tbody>';
+									$('#to_do_table_alt').empty();
+									$('#to_do_table_alt').html(print_string);
+									$('#to_do_table_alt').DataTable({
+													"destroy" : true,
+													"pageLength" : 50,
+													"order" : [[2,'asc']],
+													"columns": [{ "searchable": false, "orderable" : false },
+												{ "searchable": false, "orderable" : false },
+												{ "searchable": false, "orderable" : true },
+												{ "searchable": false, "orderable" : false },
+												{ "searchable": true, "orderable" : false },
+												{ "searchable": false, "orderable" : true },
+												{ "searchable": false, "orderable" : false }
+												]
+												});
+									$('#to_do_table_alt_filter').prepend('Notes ');
+									/*$('#alt_body').append(task_row_creator(data.task_id, data.full_name_for_table, data.datetime_assigned, data.task, data.task_description, data.datetime_due, data.task_completed, '', {%if user.access_level>1%}true{%else%}false{%endif%}));*/
+							}
+							else{
+								var task_id_selected=$('#task_id_chosen').val();
+								var row_to_edit=$('#'+ task_id_selected).parent().parent('tr');
+								var time_due=data.datetime_due;
+								row_to_edit.children('.col_task').html(data.task);
+								row_to_edit.children('.col_task_description').html('<div style="overflow:auto; max-height:250px">' + data.task_description + '</div>');
+								if(data.datetime_due){row_to_edit.children('.col_datetime_due').html(month_convert(time_due.split(' ')[2]) + '-' + time_due.split(' ')[1] + '-' + time_due.split(' ')[3]);
+								if(data.red){row_to_edit.children('.col_datetime_due').css("color", "red");}
+											else{row_to_edit.children('.col_datetime_due').css("color", "black");}
+													 }
+								if(data.priority){row_to_edit.css("background-color", "rgba(244,208,63,0.75)");}
+								else{row_to_edit.css("background-color", "white");}
+							}
+					}
+					else if ($('#new_or_edit_form').val()=='Edit' && "{{current_user.employee_id}}"==data.person_assigned_previous){
+						var task_id_selected=$('#task_id_chosen').val();
+						$('#'+ task_id_selected).parent().parent('tr').remove();
+						var string_to_add=$('#to_do_table').html();
+						$('#to_do_table').empty();
+						$('#to_do_table').html(string_to_add);
+						$('#to_do_table').DataTable({
+										"destroy" : true,
+										"order" : [[2,'asc']],
+										"columns": [{ "searchable": false, "orderable" : false },
+									{ "searchable": false, "orderable" : false },
+									{ "searchable": false, "orderable" : true },
+									{ "searchable": false, "orderable" : false },
+									{ "searchable": true, "orderable" : false },
+									{ "searchable": false, "orderable" : true },
+									{ "searchable": false, "orderable" : false }
+									]
+									});
+						$('#to_do_table_filter').prepend('Notes ');
+
+					}
+					else if($('#new_or_edit_form').val()=='Edit' && $('#viewed_user').val()==data.person_assigned_previous){
+						var task_id_selected=$('#task_id_chosen').val();
+						$('#'+ task_id_selected).parent().parent('tr').remove();
+						var string_to_add=$('#to_do_table_alt').html();
+						$('#to_do_table_alt').empty();
+						$('#to_do_table_alt').html(string_to_add);
+						$('#to_do_table_alt').DataTable({
+										"destroy" : true,
+										"pageLength" : 50,
+										"order" : [[2,'asc']],
+										"columns": [{ "searchable": false, "orderable" : false },
+									{ "searchable": false, "orderable" : false },
+									{ "searchable": false, "orderable" : true },
+									{ "searchable": false, "orderable" : false },
+									{ "searchable": true, "orderable" : false },
+									{ "searchable": false, "orderable" : true },
+									{ "searchable": false, "orderable" : false }
+									]
+									});
+						$('#to_do_table_alt_filter').prepend('Notes ');
+					}
+					else{/*do nothing*/}
+					$('#formModal').modal('hide');	
+				}
+		})
+})
+
+function task_row_creator(id, assigned_by_person, assigned_time, type, description, time_due, completed, img_src, add_edit, red, priority){
+	var print_string='';
+	if(priority){print_string+= '<tr style="background-color:rgba(244,208,63,0.75)">';}
+	else{var print_string='<tr>';}
+	if (add_edit){
+	print_string +='<td class="col_edit_reassign"><button id="task_id_' + id + '" class="btn btn-md btn-info edit_reassign">Edit/Reassign</button><p style="padding-top:0.6em"><button id="report_task_' + id + '" class="btn btn-md btn-primary report_view_added">See All Task Info</button></p></td>';}
+	else{print_string+='<td class="col_edit_reassign"><p style="padding-top:0.6em"><button id="report_task_' + id + '" class="btn btn-md btn-primary report_view_added">See All Task Info</button></p></td>';}
+	print_string+='<td class="col_assigned_by">' + assigned_by_person + '</td>';
+	print_string+='<td class="col_datetime_assigned" data-order="' + assigned_time.split(' ')[3] + '-' + month_convert(assigned_time.split(' ')[2]) + '-' + assigned_time.split(' ')[1] +  ' ' + assigned_time.split(' ')[4] + '">' + month_convert(assigned_time.split(' ')[2]) + '-' + assigned_time.split(' ')[1] + '-' + assigned_time.split(' ')[3] + '<br>' + time_convert(assigned_time.split(' ')[4]) + '</td>';
+	print_string+='<td class="col_task">' + type + '</td>';
+	print_string+='<td class="col_task_description"><div style="overflow:auto; max-height:250px">' + description + '</div></td>';
+	if(time_due){
+		if(red){print_string+='<td class="col_datetime_due" style="color:red" data-order="' + time_due.split(' ')[3] + '-' + month_convert(time_due.split(' ')[2]) + '-' + time_due.split(' ')[1] + '">' + month_convert(time_due.split(' ')[2]) + '-' + time_due.split(' ')[1] + '-' + time_due.split(' ')[3] + '</td>';}
+	else{print_string+='<td class="col_datetime_due" data-order="' + time_due.split(' ')[3] + '-' + month_convert(time_due.split(' ')[2]) + '-' + time_due.split(' ')[1] + '">' + month_convert(time_due.split(' ')[2]) + '-' + time_due.split(' ')[1] + '-' + time_due.split(' ')[3] + '</td>';}}
+	else{print_string+='<td class="col_datetime_due" data-order="3000-00-00">No assigned due date</td>';}
+	if(completed){print_string+='<td class="col_completed"><img src=' + img_src + '  style="height:10%" /></td></tr>';}
+	else{print_string+='<td class="col_completed"></td></tr>';}
+	return print_string
+	
+}
+
+function month_convert(month){switch(month){
+				case 'Jan':
+					return '01';
+					break;
+				case 'Feb':
+					return'02';
+					break;
+				case 'Mar':
+					return '03';
+					break;
+				case 'Apr':
+					return '04';
+					break;
+				case 'May':
+					return '05';
+					break;
+				case 'Jun':
+					return '06';
+					break;
+				case 'Jul':
+					return '07';
+					break;
+				case 'Aug':
+					return '08';
+					break;
+				case 'Sep':
+					return '09';
+					break;
+				case 'Oct':
+					return '10';
+					break;
+				case 'Nov':
+					return '11';
+					break;
+				case 'Dec':
+					return '12';
+					break;
+					}}
+					
+$('.report_view').on('click', function(){
+	event.preventDefault();
+	var id=$(this).attr('id');
+	show_report(id);
+})
+
+$('#to_do_table, #to_do_table_alt').on('click', '.report_view_added', function(){
+	event.preventDefault();
+	var id=$(this).attr('id');
+	show_report(id);
+})
+
+function show_report(id){
+	var url="{{url_for('main_bp.task_viewer', task_id='')}}" + id;
+	print_string='';
+	if ($('#current_employee').css("display")!="none"){
+		var current_display='current';
+		$('#current_employee').css('display', 'none');
+		$('#task_spinner').css('display', 'inline');
+		$('#viewed_employee').css('display', 'none');
+		$('.task_buttons_side').css('display', 'none');
+	}
+	else{var current_display='viewed'; 
+		$('#current_employee').css('display', 'none');
+		$('#viewed_employee').css('display', 'none');
+		$('#task_spinner').css('display', 'inline');
+		$('.task_buttons_side').css('display', 'none');	
+	}
+	$.ajax({url : url, method:'GET'}).done(
+		function(data){if(data.error){
+					alert(data.error);
+					}
+					else{
+						print_string+='<div class="container" style="width:100%; background-color:beige; border-radius:3px">';
+						print_string+='<div class="columns" style="display:flex; justify-content:flex-start">';
+						print_string+='<div class="cols" style="width:25%; text-align:right">Is task completed?&ensp;</div><div class="cols" style="width:20%">';
+						if(data.task_completed){print_string+= 'Yes</div>';}
+						else{print_string+= 'No</div>';}
+						print_string+='<div class="cols" style="width:25%; text-align:right">Is task marked as urgent?&ensp;</div><div class="cols" style="width:20%">';
+						if(data.priority){print_string+= 'Yes</div></div>';}
+						else{print_string+= 'No</div></div>';}
+						print_string+='<div class="columns" style="display:flex; justify-content:flex-start">';
+						print_string+='<div class="cols" style="width:25%; text-align:right">Date and time created:&ensp;</div><div class="cols" style="width:20%">'+ month_convert(data.datetime_created.split(' ')[2]) + '-' + data.datetime_created.split(' ')[1] + '-' + data.datetime_created.split(' ')[3] + ' ' + time_convert(data.datetime_created.split(' ')[4]) +'</div>';
+						print_string+='<div class="cols" style="width:25%; text-align:right">Person who created task:&ensp;</div><div class="cols" style="width:20%">'+ data.create_name_for_report + '</div></div>';
+						print_string+='<div class="columns" style="display:flex; justify-content:flex-start">';
+						print_string+='<div class="cols" style="width:25%; text-align:right">Date and time assigned:&ensp;</div><div class="cols" style="width:20%">'+ month_convert(data.datetime_assigned.split(' ')[2]) + '-' + data.datetime_assigned.split(' ')[1] + '-' + data.datetime_assigned.split(' ')[3] + ' ' + time_convert(data.datetime_assigned.split(' ')[4]) +'</div>';
+						print_string+='<div class="cols" style="width:25%; text-align:right">Person who assigned task:&ensp;</div><div class="cols" style="width:20%">'+ data.person_who_assign_name_for_report + '</div></div>';
+						print_string+='<div class="columns" style="display:flex; justify-content:flex-start">';
+						print_string+='<div class="cols" style="width:25%; text-align:right">Date due:&ensp;</div><div class="cols" style="width:20%">';
+						if(data.datetime_due){print_string+= month_convert(data.datetime_due.split(' ')[2]) + '-' + data.datetime_due.split(' ')[1] + '-' + data.datetime_due.split(' ')[3] + '</div>';}
+						else{print_string+='No Due Date Assigned</div>';}
+						print_string+='<div class="cols" style="width:25%; text-align:right">Person assigned:&ensp;</div><div class="cols" style="width:20%">' + data.person_assigned_name_for_report + '</div></div>';
+						if(data.task_completed && data.datetime_completed && data.datetime_completed!="" && data.person_completed_name_for_report){
+						print_string+='<div class="columns" style="display:flex; justify-content:flex-start">';
+						print_string+='<div class="cols" style="width:25%; text-align:right">Date and time completed:&ensp;</div><div class="cols" style="width:20%">'+ month_convert(data.datetime_completed.split(' ')[2]) + '-' + data.datetime_completed.split(' ')[1] + '-' + data.datetime_completed.split(' ')[3] + ' ' + time_convert(data.datetime_completed.split(' ')[4]) +'</div>';
+						print_string+='<div class="cols" style="width:25%; text-align:right">Person who completed task:&ensp;</div><div class="cols" style="width:20%">'+ data.person_completed_name_for_report + '</div></div>';
+						}
+						print_string+='<div class="columns" style="display:flex; justify-content:flex-start">';
+						print_string+='<div class="cols" style="width:25%; text-align:right">Correspondence Type:&ensp;</div><div class="cols" style="width:20%">'+ data.task + '</div>';
+						print_string+='<div class="cols" style="width:25%; text-align:right">Task description:&ensp;</div><div class="cols" style="width:20%; max-height:150px; overflow:auto">'+ data.task_description + '</div>';
+						print_string+='</div>';
+						$('#task_report').empty();
+						$('#task_report').html(print_string);
+						$('#reportModal').modal({
+						backdrop : 'static',
+						keyboard : false});
+					}
+					if(current_display=='current'){
+						$('#current_employee').css('display', 'inline');
+						$('#task_spinner').css('display', 'none');
+						$('#viewed_employee').css('display', 'none');
+						$('.task_buttons_side').css('display', 'inline');
+					}
+					else{
+						$('#current_employee').css('display', 'none');
+						$('#task_spinner').css('display', 'none');
+						$('#viewed_employee').css('display', 'inline');
+						$('.task_buttons_side').css('display', 'inline');
+					}
+		}
+	)
+}
+
+</script>
+
+<script>
+$('#make_event').on("click", function(){
+	event.preventDefault();
+	var iframe=document.getElementById("form_modal");
+	if(iframe.contentWindow.document.getElementById("change_tracker").value==1){
+		alert('You have unsaved changes in the form. You cannot fill out an event form for this task until you have saved all changes');
+		return false;}
+		/*var x= confirm('You have unsaved changes in the observation. then the changes will be lost. You sure you want to proceed?');
+		if(x){$('#formModal').modal('hide');}
+		else{return false;}*/
+	else{var url="{{url_for('main_bp.event_with_task_getter', task_id='')}}" + $('#task_id_chosen').val();
+		$('#save_event').css("display", "inline");
+		$('.button_obs').css("display", "none");
+		$('#task_spinner_modal').css("display", "inline");
+		$('#form_modal').css("display", "none");
+		$.ajax({url : url , method : 'GET'}).done(
+			function(data){
+				if(data.error){alert(data.error);
+							   $('#task_spinner_modal').css("display", "none");
+							   $('#form_modal').css("display", "inline");
+							   $('#save_event').css("display", "none");
+							   $('.button_obs').css("display", "inline");
+							   }
+				else{var url_event="{{url_for('main_bp.event_with_task', task_id='')}}" + data.id;
+					alert(data.success);
+					$('#form_modal').attr('src', url_event);
+					$('.modal-title').text('Event Form');
+					$('#form_modal').css("display", "inline");
+					$('#task_spinner_modal').css("display", "none");
+					
+					
+				}
+			})
+		}	
+})
+
+$('#save_event').on('click', function(){
+	var iframe=document.getElementById("form_modal");
+	var form= iframe.contentWindow.document.getElementsByTagName("form")[0];
+	var data = new FormData(form);
+	var chosen_id=$('#task_id_chosen').val();
+	var img_string='';
+	var row_to_finalize=$('#'+chosen_id).parent().parent('tr');
+	var url="{{url_for('main_bp.event_with_task', task_id='')}}" + chosen_id;
+	$.ajax({url : url , method: 'POST', data: data, processData: false, contentType: false, dataType: "json"}).done(
+		function(data){
+				if(data.error){alert(data.error);
+							}
+				else{
+					alert(data.success);
+					img_string+='<img src="' + "{{url_for('static', filename='images/checkmark.png')}}" + '" style="height:10%" /></td></tr>';
+					$('#formModal').modal('hide');
+					if ($('#current_employee').css("display") != "none"){
+						row_to_finalize.addClass('completed_task');
+						if($('#current_toggle').val()=="none"){
+							row_to_finalize.toggle();
+						}
+					}
+					else{row_to_finalize.addClass('completed_task_alt');
+						if($('#alt_toggle').val()=="none"){
+							row_to_finalize.toggle();
+						}
+					}
+					$('#' + chosen_id).css("display", "none");
+					row_to_finalize.css("background-color", "white");
+					row_to_finalize.children('.col_datetime_due').css("color", "black");
+					row_to_finalize.children('.col_completed').html(img_string);
+				}
+		})
+})
+
+</script>
+
+
+<script type="text/javascript">
+$('select[multiple].mult').multiselect({selectAll: true,
+search : true,
+texts: {placeholder: 'Select School(s)',
+	search:'Search Schools'
+	},
+maxWidth : 290,
+maxHeight : 350})
+
+$('select[multiple].mult-employee').multiselect({selectAll: true,
+search : true,
+texts: {placeholder: 'Select Employee(s) Who Completed',
+	search:'Search Employees'
+	},
+maxWidth : 290,
+maxHeight : 350})
+
+$('select[multiple].mult-right').multiselect({selectAll: true,
+search : true,
+texts: {placeholder: 'Select Role(s)',
+	search:'Search Roles'
+	},
+maxWidth : 290,
+maxHeight : 350})
+
+$(document).ready(function(){$('#school_list, #employee_select, #role_list').multiselect({
+});
+});
+
+$('#reset_button').on('click', function(){
+	$('select[multiple].mult').multiselect('reset');
+	$('select[multiple].mult-right').multiselect('reset');
+	$('select[multiple].mult-employee').multiselect('reset');
+})
+</script>
+
+
+<script>
+$('#event_creator').on("click", function(){
+	event.preventDefault();
+	var url="{{url_for('main_bp.event_new')}}";
+	$('#event_edit_save').css("display", "none");
+	$('#save_event_new').css("display", "inline");
+	$('#event_modal').attr('src', url);
+	$('.modal-title_event').text('Event Form');
+	$('#eventModal').modal({
+			backdrop : 'static',
+			keyboard : false});
+})
+
+$('.edit_event').on('click', function(){
+	event.preventDefault();
+	var chosen_id = $(this).attr("id");
+	$('#event_editor_id_chosen').val(chosen_id);
+	var url="{{url_for('main_bp.event_editor', event_id='')}}" + chosen_id;
+	$('#event_edit_save').css("display", "inline");
+	$('#save_event_new').css("display", "none");
+	$('#event_modal').attr('src', url);
+	$('.modal-title_event').text('Event Form');
+	$('#eventModal').modal({
+			backdrop : 'static',
+			keyboard : false});
+})
+
+$('#events_table_alt').on('click', '.edit_event_alt', function(){
+	event.preventDefault();
+	var chosen_id = $(this).attr("id");
+	$('#event_editor_id_chosen').val(chosen_id);
+	var url="{{url_for('main_bp.event_editor', event_id='')}}" + chosen_id;
+	$('#event_edit_save').css("display", "inline");
+	$('#save_event_new').css("display", "none");
+	$('#event_modal').attr('src', url);
+	$('.modal-title_event').text('Event Form');
+	$('#eventModal').modal({
+			backdrop : 'static',
+			keyboard : false});
+})
+
+$(document).on('click', '#save_event_new', function(){
+	event.preventDefault();
+	var iframe=document.getElementById("event_modal");
+	var form= iframe.contentWindow.document.getElementsByTagName("form")[0];
+	var data = new FormData(form);
+	url="{{url_for('main_bp.event_new')}}";
+	$.ajax({url : url , method: 'POST', data: data, processData: false, contentType: false, dataType: "json"}).done(
+		function(data){
+				if(data.error){alert(data.error);
+							}
+				else{alert(data.success);
+					 $('#eventModal').modal('hide');
+				}
+		});
+	
+});
+
+$(document).on('click', '#event_edit_save', function(){
+	event.preventDefault();
+	var iframe=document.getElementById("event_modal");
+	var form= iframe.contentWindow.document.getElementsByTagName("form")[0];
+	var data = new FormData(form);
+	url="{{url_for('main_bp.event_editor', event_id='')}}"  + $('#event_editor_id_chosen').val();
+	$.ajax({url : url , method: 'POST', data: data, processData: false, contentType: false, dataType: "json"}).done(
+		function(data){
+				if(data.error){alert(data.error);
+							}
+				else{alert(data.success);
+					var chosen_id=$('#event_editor_id_chosen').val();
+					alert(chosen_id);
+					var row_to_edit=$('#' + chosen_id).parent().parent('tr');
+					var html_string=month_convert(data.last_edited_timestamp.split(' ')[2]) + '-' + data.last_edited_timestamp.split(' ')[1] + '-' + data.last_edited_timestamp.split(' ')[3] + '<br>' + time_convert(data.last_edited_timestamp.split(' ')[4]);
+					row_to_edit.children('.col_event_person_completed').text(data.name_for_completion);
+					row_to_edit.children('.col_time_updated').html(html_string);
+					row_to_edit.children('.col_event_type').text(data.event_type);
+					row_to_edit.children('.col_person_updated').text(data.name_for_edited);
+					row_to_edit.children('.col_role_contacted').text(data.role_contacted);
+					if(data.name_contacted){row_to_edit.children('.col_name_contacted').text(data.name_contacted);}
+					else{row_to_edit.children('.col_name_contacted').text('No name provided');}
+					row_to_edit.children('.col_school').text(data.school);
+					row_to_edit.children('.col_summary').html('<div style="max-height:250px; overflow:auto">' + data.summary + '</div>');
+					if(data.student_id){row_to_edit.children('.col_student_id').text(data.student_id);}
+					else{row_to_edit.children('.col_student_id').text('No ID provided');}
+					$('#eventModal').modal('hide');
+				}
+		});
+	
+});
+
+$(document).on('click', '.close_event_modal', function(){
+	var iframe=document.getElementById("event_modal");
+	if(iframe.contentWindow.document.getElementById("change_tracker").value==1){
+		var x= confirm('You have unsaved changes in the observation. If you close this form, then the changes will be lost. You sure you want to proceed?');
+		if(x){$('#eventModal').modal('hide');}
+		else{return false;}
+	}
+	else{$('#eventModal').modal('hide');}
+})
+
+$('#event_submit').on("click", function(){
+	event.preventDefault();
+	var form=document.getElementById("event_form");
+	var data = new FormData(form);
+	var print_string='<thead><th style="width:6%">Edit</th><th style="width:7.5%">Person Completed</th><th style="width:8.5%">Time Completed</th>';
+	print_string+='<th style="width:7%">Event Type</th><th style="width:9.75%">School</th><th style="width:6.75%">Student ID</th><th style="width:10%">Name Contacted</th>';
+	print_string+='<th style="width:8%">Role Contacted</th><th style="width:8.5%">Time Last Updated</th><th style="width:8%">Who Last Updated</th>';
+	print_string+='<th style="width:20%">Summary</th></thead><tbody>';
+	url="{{url_for('main_bp.event_searcher')}}";
+	$('#current_event').css('display', 'none');
+	$('#loaded_event').css('display', 'none');
+	$('#event_task_spinner').css('display', 'inline');
+	$('#event_buttons_side').css('display', 'none');
+	$.ajax({url : url , method: 'POST', data: data, processData: false, contentType: false, dataType: "json"}).done(
+		function(data){
+				if(data.error){alert(data.error);
+							$('#loaded_event').css('display', 'inline');
+							$('#event_task_spinner').css('display', 'none');
+							$('#event_buttons_side').css('display', 'inline');
+							$('#event_body_alt').empty();
+							$('#eventModal').modal('hide');
+							}
+				else{alert(data.success);
+					 $.each(data.test, function(index, value){
+						print_string+='<tr>';
+						print_string+='<td class="col_edit_event">';
+						{%if user.access_level>1%}print_string+='<button id="event_altid_' + value.event_id+ '" class="btn btn-md btn-info edit_event_alt">Edit Event</button></td>';
+						{%else%}
+						if("{{user.employee_id}}"==value.person_completed){print_string+='<button id="event_altid_' + value.event_id+ '" class="btn btn-md btn-info edit_event_alt">Edit Event</button></td>';}
+						else{print_string+='</td>';}
+						{%endif%}
+						print_string+='<td class="col_event_person_completed">' + value.person_name_completed + '</td>';
+						print_string+='<td class="col_event_completed" data-order="' + value.complete_timestamp +'">' + date_convert(value.complete_timestamp.split('T')[0]) + '<br>' + time_convert(value.complete_timestamp.split('T')[1]) + '</td>';
+						print_string+='<td class="col_event_type">' + value.event_type + '</td>';
+						print_string+='<td class="col_school">' + value.school + '</td>';
+						if(value.student_id){print_string+='<td class="col_student_id">' + value.student_id + '</td>';}
+						else{print_string+='<td class="col_student_id">No ID provided</td>';}
+						if(value.name_contacted){print_string+='<td class="col_name_contacted">' + value.name_contacted + '</td>';}
+						else{print_string+='<td class="col_name_contacted">No name provided</td>';}
+						print_string+='<td class="col_role_contacted">' + value.role_contacted + '</td>';
+						print_string+='<td class="col_time_updated">' + date_convert(value.last_edited_timestamp.split('T')[0]) + '<br>' + time_convert(value.last_edited_timestamp.split('T')[1]) + '</td>';
+						print_string+='<td class="col_person_updated">' + value.person_name_updated + '</td>';
+						print_string+='<td class="col_summary"><div style="max-height:250px; overflow:auto">' + value.summary + '</div></td>';
+						print_string+='</tr>';
+					 });
+					 print_string+='</tbody>';
+					 $('#events_table_alt').empty();
+					 $('#events_table_alt').html(print_string);
+					 $('#events_table_alt').DataTable({
+							"destroy" : true,
+							"pageLength" : 50,
+							"order" : [[2,'desc']],
+							"columns": [{ "searchable": false, "orderable" : false },
+							{ "searchable": false, "orderable" : false },
+						{ "searchable": false, "orderable" : true },
+						{ "searchable": false, "orderable" : false },
+						{ "searchable": false, "orderable" : false },
+						{ "searchable": false, "orderable" : false },
+						{ "searchable": false, "orderable" : false },
+						{ "searchable": false, "orderable" : false },
+						{ "searchable": false, "orderable" : false },
+						{ "searchable": false, "orderable" : false },
+						{ "searchable": true, "orderable" : false }
+						]
+						});
+					 $('#events_table_alt_filter').prepend('Summary ');
+					 $('#loaded_event').css('display', 'inline');
+					 $('#event_task_spinner').css('display', 'none');
+					 $('#event_buttons_side').css('display', 'inline');
+					 $('#eventModal').modal('hide');
+				}
+		});	
+})
+
+</script>
+
+<!--This is the event modal declaration-->
+
+<div class="modal" id="eventModal" role="dialog">
+	<div class="modal-dialog modal-xl" >
+    		<div class="modal-content" style="height:780px">
+
+      <!-- Modal Header -->
+      <div class="modal-header">
+        <h4 class="modal-title_event"></h4>
+        <button type="button" class="close_event_modal">&times;</button>
+      </div>
+	
+	 <!-- Modal body -->
+     <div class="modal-body" >
+        
+	<iframe id="event_modal" style="width:98%; height:600px; overflow:auto"></iframe>
+      </div>
+
+	 <!-- Modal footer -->
+    <div class="modal-footer">
+	<button type="button" class="btn btn-secondary" id="event_edit_save">Save Event Changes</button> &emsp;
+	<button type="button" class="btn btn-secondary" id="save_event_new">Save Event</button> &emsp;
+    <button type="button" class="btn btn-danger close_event_modal">Close</button>
+      </div>
+    </div>
+  </div>
+</div>
+<input type="hidden" id="event_editor_id_chosen"/>
+{% endblock %}

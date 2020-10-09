@@ -1,0 +1,120 @@
+{%extends "base.html" %}
+
+{%block content%}
+
+<style>
+	.container {width:98%;
+				max-width:1100px;
+				min-width:850px;
+				align-items: center}
+				
+	.columns {display:flex;
+			  justify-content:flex-start;
+			  width:98%;
+			  padding-top:0.5em}
+			  
+	.cols-left {font-size:125%;
+				width:50%;
+				text-align:right}
+				
+	.cols-right {font-size:125%;
+				width:50%;
+				text-align:left}
+</style>
+
+<div style="margin-top:2em; margin-left:auto; margin-right:auto; text-align:center; max-width:900px; background-color:skyblue">
+	<h1 style="font-size:300%">Event Form</h1>
+	<h4>Submit a new task for yourself or a colleague below. After submission, the person assigned the task will receive an automated email notifying them of the task.</h4>
+</div>
+<div class='container'>
+	<form action="" method="post" novalidate>
+		{{form.hidden_tag()}}<br>
+		<div class='columns'>
+			<div class='cols-left'>
+			Event Type&ensp;
+			</div>
+			<div class='cols-right'>
+			    {{form.event_type(style='width:50%; background-color:beige', class_='change')}}<br>
+			{% for error in form.event_type.errors %}
+			<span style = "color:red">[{{error}}] </span>
+			{% endfor %}
+			</div>
+		</div>
+		<div class='columns'>
+			<div class='cols-left'>
+			Student ID (optional)&ensp;
+			</div>
+			<div class='cols-right'>
+			   {{form.student_id(type='text', style='width:50%; background-color:beige', class_='change')}}<br>
+			{% for error in form.student_id.errors%}
+			<span style = "color:red">[{{error}}] </span>
+			{% endfor %}
+			</div>
+		</div>
+		<div class='columns'>
+			<div class='cols-left'>
+			School&ensp;
+			</div>
+			<div class='cols-right'>
+			    {{form.school(style='width:50%; background-color:beige', class_='change')}}<br>
+			{% for error in form.school.errors %}
+			<span style = "color:red">[{{error}}] </span>
+			{% endfor %}
+			</div>
+		</div>
+		<div class='columns'>
+			<div class='cols-left'>
+			Role of person contacted&ensp;
+			</div>
+			<div class='cols-right'>
+			   {{form.role_contacted(class_='change', style='width:50%; background-color:beige', rows=6)}}<br>
+			{% for error in form.role_contacted.errors%}
+			<span style = "color:red">[{{error}}] </span>
+			{% endfor %}
+			<span id="task_description_error" style="display:none; color:red"></span>
+			</div>
+		</div>
+		<div class='columns'>
+			<div class='cols-left'>
+			Summary&ensp;
+			</div>
+			<div class='cols-right'>
+			   {{form.summary(class_='change', style='width:50%; background-color:beige', rows=6)}}<br>
+			{% for error in form.summary.errors%}
+			<span style = "color:red">[{{error}}] </span>
+			{% endfor %}
+			<span id="task_description_error" style="display:none; color:red"></span>
+			</div>
+		</div>
+</div>
+</form>
+
+<input type="hidden" id="change_tracker" value=0 />
+
+<script>
+$(document).ready( function () {
+	$('.navbar').css('display', 'none');
+});
+
+$('.change').on('change', function(){
+	$('#change_tracker').val(1);
+})
+
+{% if edit%}
+$(document).ready( function () {
+	$('#person_assigned option' ).each(function(){
+		if ($(this).val()=='{{task.person_assigned}}'){
+			$(this).prop('selected', true);}
+	});
+	$('#datetime_due').val('{{task.datetime_due}}');
+	$('#task option' ).each(function(){
+		if ($(this).val()=='{{task.task}}'){
+			$(this).prop('selected', true);}
+	});
+	$('#task_description').val('{{task.task_description}}');
+	
+});
+{%endif%}
+</script>
+
+{% endblock %}

@@ -1,0 +1,76 @@
+{%extends "bootstrap_base.html"%}
+{%block content%}
+
+{% from 'bootstrap/form.html' import render_form, render_form_row %}
+
+<div class="bg-primary" style="margin-top:1em; margin-left:auto; margin-right:auto; text-align:center; min-width: 900px; max-width:1000px; border:2px solid black; color:white; border-radius:5px">
+	<h1 style="font-size:300%">Event Form</h1>
+	<h4 style="padding:1em">Submit a new event that completes the task you selected. After submission, the task which this satisfies will be marked complete.</h4>
+</div>
+
+{%if task%}
+<div style="margin-top:1em; margin-left:auto; margin-right:auto; text-align:center; min-width: 900px; max-width:1000px; background-color:gainsboro; border-radius:5px; font-size:120%">
+<p><b>This is the task that this event will mark as complete. If this is not the correct task, then exit and find the correct task. Once you save this event, the task it completes cannot be changed!</b></p>
+	<div class="row">
+		<div class="col-md-6" style="text-align:right">Task Description:&ensp;</div>
+		<div class="col-md-5" style="max-height:175px; overflow:auto; text-align:left">{{task.task_description}}</div>
+	</div>
+</div>
+{%endif%}
+<form>
+<div style="min-width:900px; max-width:1000px; margin-right:auto; margin-left:auto; margin-top:1em">
+{{form.csrf_token()}}
+{%if user.access_level>1%}
+{{ render_form_row([form.event_type, form.person_completed], col_class_default='col-md-6')}}
+{%else%}
+{{ render_form_row([form.event_type], col_class_default='col-md-6')}}
+{%endif%}
+{{ render_form_row([form.school, form.student_id], col_class_default='col-md-6')}}
+{{ render_form_row([form.role_contacted, form.name_contacted], col_class_default='col-md-6')}}
+{{ render_form_row([form.summary], col_class_default='col-md-12')}}
+</form>
+<!--{{ render_form(form) }}-->
+</div>
+
+<input type="hidden" id="change_tracker" value=0 />
+
+<script>
+$(document).ready( function (){$('.form-control').css({"background-color": "beige", "box-shadow" : "2px 2px" });
+$('#summary').attr("rows", 8);
+$('.form-control').addClass('change');
+})
+$('form').on('change', '.change', function(){
+	$('#change_tracker').val(1);
+})
+{%if edit%}
+$(document).ready( function () {
+	$('#event_type option' ).each(function(){
+		if ($(this).val()=='{{event.event_type}}'){
+			$(this).prop('selected', true);}
+	});
+	{%if user.access_level>1%}
+	$('#person_completed option' ).each(function(){
+		if ($(this).val()=='{{event.person_completed}}'){
+			$(this).prop('selected', true);}
+	});
+	{%endif%}
+	{%if event.student_id%}
+	$('#student_id').val('{{event.student_id}}');
+	{%endif%}
+	{%if event.name_contacted%}
+	$('#name_contacted').val('{{event.name_contacted}}');
+	{%endif%}
+	$('#role_contacted option' ).each(function(){
+		if ($(this).val()=='{{event.role_contacted}}'){
+			$(this).prop('selected', true);}
+	});
+	$('#school option' ).each(function(){
+		if ($(this).val()=='{{event.school}}'){
+			$(this).prop('selected', true);}
+	});
+	$('#summary').val('{{event.summary}}');
+	
+});
+{%endif%}
+</script>
+{%endblock%}
