@@ -60,7 +60,6 @@ plotly==4.9.0
 preshed==3.0.2
 pylint==2.4.4
 pyparsing==2.4.7
-pypiwin32==223
 python-dateutil==2.8.1
 python-dotenv==0.14.0
 python-editor==1.0.4
